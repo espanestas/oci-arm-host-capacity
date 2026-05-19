@@ -21,12 +21,16 @@ jobs:
       - name: Install Dependencies
         run: composer install
 
+      - name: Create Env File
+        run: |
+          cat <<EOF > .env
+          OCI_USER_ID="${{ secrets.OCI_USER_ID }}"
+          OCI_TENANCY_ID="${{ secrets.OCI_TENANCY_ID }}"
+          OCI_FINGERPRINT="${{ secrets.OCI_FINGERPRINT }}"
+          OCI_REGION="${{ secrets.OCI_REGION }}"
+          OCI_SUBNET_ID="${{ secrets.OCI_SUBNET_ID }}"
+          OCI_PRIVATE_KEY="${{ secrets.OCI_PRIVATE_KEY }}"
+          EOF
+
       - name: Run Grabber
-        env:
-          OCI_USER_ID: ${{ secrets.OCI_USER_ID }}
-          OCI_TENANCY_ID: ${{ secrets.OCI_TENANCY_ID }}
-          OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
-          OCI_REGION: ${{ secrets.OCI_REGION }}
-          OCI_SUBNET_ID: ${{ secrets.OCI_SUBNET_ID }}
-          OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
         run: php index.php
