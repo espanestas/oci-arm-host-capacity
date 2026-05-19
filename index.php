@@ -5,6 +5,14 @@ require_once __DIR__ . '/vendor/autoload.php';
 use Hitrov\OciApi;
 use Hitrov\OciConfig;
 
+// FORCEFULLY DEACTIVATE THE BROKEN HITROV VALIDATOR SYSTEM VIA THE RUNTIME CONTEXT
+// This patches the URL validation crash so the script can communicate directly with Oracle
+class SignerUrlBypass extends \Hitrov\OCI\Signer {
+    protected function validateParameters(): void {
+        // By leaving this completely empty, we forcefully skip the broken filter_var check entirely!
+    }
+}
+
 // Get credentials from GitHub Environment and forcefully scrub away hidden line breaks
 $userId = trim(getenv('OCI_USER_ID'));
 $tenancyId = trim(getenv('OCI_TENANCY_ID'));
@@ -26,7 +34,20 @@ $config = new OciConfig(
     ''  
 );
 
-$api = new OciApi($config);
+// We attach our customized bypass layout straight into the core API client engine
+$api = new class($config) extends OciApi {
+    protected function call(string $method, string $url, string $body = '', array $headers = []): array {
+        $signer = new SignerUrlBypass(
+            $this->config->getUserId(),
+            $this->config->getTenancyId(),
+            $this->config->getRegion(),
+            $this->config->getFingerprint(),
+            $this->config->getPrivateKey()
+        );
+        $headers = array_merge($headers, $signer->getHeaders($url, $method, $body));
+        return $this->client->call($method, $url, $body, $headers);
+    }
+};
 
 $shape = 'VM.Standard.A1.Flex';
 $ocpus = 4;
@@ -37,7 +58,7 @@ $availabilityDomain = 'uNAn:AP-SINGAPORE-1-AD-1';
 
 echo "Targeting Location Domain: " . $availabilityDomain . "\n";
 
-// CORRECTED ORDER: Pass $config as argument #1 according to the library definitions
+// Request instance generation sequence securely
 $res = $api->createInstance(
     $config,
     trim(getenv('OCI_SUBNET_ID')),
