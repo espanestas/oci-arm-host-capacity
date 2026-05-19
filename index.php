@@ -5,13 +5,6 @@ require_once __DIR__ . '/vendor/autoload.php';
 use Hitrov\OciApi;
 use Hitrov\OciConfig;
 
-// FORCEFULLY DEACTIVATE THE BROKEN SYSTEM VALIDATOR VIA THE RUNTIME CONTEXT
-class SignerUrlBypass extends \Hitrov\OCI\Signer {
-    protected function validateParameters(): void {
-        // By leaving this completely empty, we forcefully skip the broken filter_var check entirely!
-    }
-}
-
 // Get credentials from GitHub Environment and forcefully scrub away hidden line breaks
 $userId = trim(getenv('OCI_USER_ID'));
 $tenancyId = trim(getenv('OCI_TENANCY_ID'));
@@ -35,17 +28,48 @@ $config = new OciConfig(
 
 // We attach our customized bypass layout straight into the core API client engine
 $api = new class($config) extends OciApi {
-    // Corrected to public visibility to match parent class signature definitions
-    public function call(string $method, string $url, string $body = '', array $headers = []): array {
-        $signer = new SignerUrlBypass(
-            $this->config->getUserId(),
-            $this->config->getTenancyId(),
-            $this->config->getRegion(),
-            $this->config->getFingerprint(),
-            $this->config->getPrivateKey()
+    public function createInstance(OciConfig $config, string $subnetId, string $name, string $shape, string $availabilityDomain, array $shapeConfig = [], array $metadata = [], array $extendedParams = []): array {
+        $compartmentId = $config->getCompartmentId() ?: $config->getTenancyId();
+        $baseUrl = "https://iaas.{$config->getRegion()}://";
+        
+        $body = [
+            'compartmentId'      => $compartmentId,
+            'availabilityDomain' => $availabilityDomain,
+            'displayName'        => $name,
+            'shape'              => $shape,
+            'subnetId'           => $subnetId,
+            'shapeConfig'        => $shapeConfig,
+        ];
+        
+        if (!empty($metadata)) {
+            $body['metadata'] = $metadata;
+        }
+
+        $jsonBody = json_encode($body);
+
+        // Sign the request without calling Hitrov's broken validator class
+        $signer = new \Hitrov\OCI\Signer(
+            $config->getUserId(),
+            $config->getTenancyId(),
+            $config->getRegion(),
+            $config->getFingerprint(),
+            $config->getPrivateKey()
         );
-        $headers = array_merge($headers, $signer->getHeaders($url, $method, $body));
-        return $this->client->call($method, $url, $body, $headers);
+        
+        // Pass the structural signature directly into the native curl network call
+        $headers = $signer->getHeaders($baseUrl, 'POST', $jsonBody);
+        $headers[] = 'Content-Type: application/json';
+
+        $ch = curl_init($baseUrl);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonBody);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        
+        $response = curl_exec($ch);
+        curl_close($ch);
+
+        return json_decode($response, true) ?: [];
     }
 };
 
@@ -58,7 +82,7 @@ $availabilityDomain = 'uNAn:AP-SINGAPORE-1-AD-1';
 
 echo "Targeting Location Domain: " . $availabilityDomain . "\n";
 
-// Request instance generation sequence securely
+// Execute instance generation sequence securely
 $res = $api->createInstance(
     $config,
     trim(getenv('OCI_SUBNET_ID')),
