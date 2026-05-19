@@ -83,10 +83,10 @@ if (isset($res['code']) && $res['code'] === 'LimitExceeded') {
 if (isset($res['message'])) {
     echo "Oracle Cloud Response: " . $res['message'] . "\n";
     if (strpos($res['message'], 'Out of host capacity') !== false) {
-        echo "Script successfully pinged Oracle. No slots open right now. Retrying in 5 minutes via cron loop...\n'';
+        echo "Script successfully pinged Oracle. No slots open right now. Retrying in 5 minutes via cron loop...\n";
         exit(0);
     }
     exit(1);
 }
 
-echo "Oracle API returned HTTP Code {$httpCode}: " . print_r($res, true) . "\n";
+echo "Oracle API returned HTTP Code: " . $httpCode . "\n";
