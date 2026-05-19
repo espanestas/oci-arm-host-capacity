@@ -5,19 +5,16 @@ require_once __DIR__ . '/vendor/autoload.php';
 use Hitrov\OciApi;
 use Hitrov\OciConfig;
 
-// Forcefully hardcode your clean region and tenancy details directly
-$region = 'ap-singapore-1';
-$tenancyId = 'ocid1.tenancy.oc1..aaaaaaa'; // Replace this temporary string with your real Tenancy OCID text
-$userId = 'ocid1.user.oc1..aaaaaaa';       // Replace this temporary string with your real User OCID text
-$fingerprint = 'aa:bb:cc:dd...';           // Replace this temporary string with your real Fingerprint text
-
-// Fetch the private key and subnet from GitHub secrets since they are long/secure
+// Automatically scrub inputs and hardcode your confirmed Singapore region identifier
+$userId = trim(getenv('OCI_USER_ID'));
+$tenancyId = trim(getenv('OCI_TENANCY_ID'));
+$region = 'ap-singapore-1'; 
+$fingerprint = trim(getenv('OCI_FINGERPRINT'));
 $privateKey = trim(getenv('OCI_PRIVATE_KEY'));
-$subnetId = trim(getenv('OCI_SUBNET_ID'));
 
 $compartmentId = $tenancyId; 
 
-// Initialize the configuration layout safely
+// Build configuration profile layout safely
 $config = new OciConfig(
     $userId,
     $tenancyId,
@@ -35,10 +32,10 @@ $shape = 'VM.Standard.A1.Flex';
 $ocpus = 4;
 $memoryInGBs = 24;
 
-// Connect to Oracle to parse your region domains
+// Request domain configurations directly from Singapore endpoints
 $availabilityDomains = $api->getAvailabilityDomains($config);
 if (empty($availabilityDomains)) {
-    echo "Error: Could not retrieve availability domains. Check your key configurations.\n";
+    echo "Error: Could not retrieve availability domains. Check user credentials.\n";
     exit(1);
 }
 
@@ -50,9 +47,9 @@ if (isset($availabilityDomains['name'])) {
 
 echo "Targeting Location Domain: " . $availabilityDomain . "\n";
 
-// Request the Minecraft Instance creation
+// Command the instance generation sequence
 $res = $api->createInstance(
-    $subnetId,
+    trim(getenv('OCI_SUBNET_ID')),
     'Minecraft-Server-FreeTier', 
     $shape,
     $availabilityDomain,
@@ -68,7 +65,7 @@ if (empty($res)) {
 }
 
 if (isset($res['code']) && $res['code'] === 'LimitExceeded') {
-    echo "Error: Limit Exceeded. Check if you already have existing instances.\n";
+    echo "Error: Limit Exceeded. Check your existing instances.\n";
     exit(1);
 }
 
