@@ -5,17 +5,19 @@ require_once __DIR__ . '/vendor/autoload.php';
 use Hitrov\OciApi;
 use Hitrov\OciConfig;
 
-// Get credentials from GitHub Environment and forcefully scrub away hidden line breaks
-$userId = trim(getenv('OCI_USER_ID'));
-$tenancyId = trim(getenv('OCI_TENANCY_ID'));
-$region = trim(getenv('OCI_REGION'));
-$fingerprint = trim(getenv('OCI_FINGERPRINT'));
-$privateKey = trim(getenv('OCI_PRIVATE_KEY'));
+// Forcefully hardcode your clean region and tenancy details directly
+$region = 'ap-singapore-1';
+$tenancyId = 'ocid1.tenancy.oc1..aaaaaaa'; // Replace this temporary string with your real Tenancy OCID text
+$userId = 'ocid1.user.oc1..aaaaaaa';       // Replace this temporary string with your real User OCID text
+$fingerprint = 'aa:bb:cc:dd...';           // Replace this temporary string with your real Fingerprint text
 
-// In Oracle Cloud Free Tier, your Compartment ID is the exact same code as your Tenancy ID
+// Fetch the private key and subnet from GitHub secrets since they are long/secure
+$privateKey = trim(getenv('OCI_PRIVATE_KEY'));
+$subnetId = trim(getenv('OCI_SUBNET_ID'));
+
 $compartmentId = $tenancyId; 
 
-// We supply all 8 expected arguments to the constructor
+// Initialize the configuration layout safely
 $config = new OciConfig(
     $userId,
     $tenancyId,
@@ -23,8 +25,8 @@ $config = new OciConfig(
     $fingerprint,
     $privateKey,
     $compartmentId,
-    '', // availabilityDomain (leave blank, script auto-detects)
-    ''  // subnetId (passed directly below instead)
+    '', 
+    ''  
 );
 
 $api = new OciApi($config);
@@ -33,14 +35,13 @@ $shape = 'VM.Standard.A1.Flex';
 $ocpus = 4;
 $memoryInGBs = 24;
 
-// Pass the correct configuration object to the domain lookup function
+// Connect to Oracle to parse your region domains
 $availabilityDomains = $api->getAvailabilityDomains($config);
 if (empty($availabilityDomains)) {
-    echo "Error: Could not retrieve availability domains. Double-check your Oracle keys.\n";
+    echo "Error: Could not retrieve availability domains. Check your key configurations.\n";
     exit(1);
 }
 
-// Select the first available domain block in Singapore safely
 if (isset($availabilityDomains['name'])) {
     $availabilityDomain = $availabilityDomains['name'];
 } else {
@@ -51,7 +52,7 @@ echo "Targeting Location Domain: " . $availabilityDomain . "\n";
 
 // Request the Minecraft Instance creation
 $res = $api->createInstance(
-    trim(getenv('OCI_SUBNET_ID')),
+    $subnetId,
     'Minecraft-Server-FreeTier', 
     $shape,
     $availabilityDomain,
