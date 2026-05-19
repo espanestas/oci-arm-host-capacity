@@ -32,15 +32,14 @@ $shape = 'VM.Standard.A1.Flex';
 $ocpus = 4;
 $memoryInGBs = 24;
 
-// BYPASS THE HITROV VALIDATION BUG:
-// We skip fetching the domain dynamically because Hitrov's tool crashes on it.
-// Instead, we force the exact technical code for Singapore's main availability domain directly!
+// Use Singapore's main availability domain directly
 $availabilityDomain = 'uNAn:AP-SINGAPORE-1-AD-1'; 
 
 echo "Targeting Location Domain: " . $availabilityDomain . "\n";
 
-// Command the instance generation sequence
+// CORRECTED ORDER: Pass $config as argument #1 according to the library definitions
 $res = $api->createInstance(
+    $config,
     trim(getenv('OCI_SUBNET_ID')),
     'Minecraft-Server-FreeTier', 
     $shape,
