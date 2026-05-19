@@ -5,12 +5,12 @@ require_once __DIR__ . '/vendor/autoload.php';
 use Hitrov\OciApi;
 use Hitrov\OciConfig;
 
-// Get credentials from GitHub Environment
-$userId = getenv('OCI_USER_ID');
-$tenancyId = getenv('OCI_TENANCY_ID');
-$region = getenv('OCI_REGION');
-$fingerprint = getenv('OCI_FINGERPRINT');
-$privateKey = getenv('OCI_PRIVATE_KEY');
+// Get credentials from GitHub Environment and forcefully scrub away hidden line breaks
+$userId = trim(getenv('OCI_USER_ID'));
+$tenancyId = trim(getenv('OCI_TENANCY_ID'));
+$region = trim(getenv('OCI_REGION'));
+$fingerprint = trim(getenv('OCI_FINGERPRINT'));
+$privateKey = trim(getenv('OCI_PRIVATE_KEY'));
 
 // In Oracle Cloud Free Tier, your Compartment ID is the exact same code as your Tenancy ID
 $compartmentId = $tenancyId; 
@@ -51,7 +51,7 @@ echo "Targeting Location Domain: " . $availabilityDomain . "\n";
 
 // Request the Minecraft Instance creation
 $res = $api->createInstance(
-    getenv('OCI_SUBNET_ID'),
+    trim(getenv('OCI_SUBNET_ID')),
     'Minecraft-Server-FreeTier', 
     $shape,
     $availabilityDomain,
