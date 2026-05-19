@@ -33,17 +33,15 @@ $shape = 'VM.Standard.A1.Flex';
 $ocpus = 4;
 $memoryInGBs = 24;
 
-// Pass the tenancyId argument to the domain lookup function
-$availabilityDomains = $api->getAvailabilityDomains($tenancyId);
+// Pass the correct configuration object to the domain lookup function
+$availabilityDomains = $api->getAvailabilityDomains($config);
 if (empty($availabilityDomains)) {
     echo "Error: Could not retrieve availability domains. Double-check your Oracle keys.\n";
     exit(1);
 }
 
 // Select the first available domain block in Singapore safely
-if (isset($availabilityDomains[0]['name'])) {
-    $availabilityDomain = $availabilityDomains[0]['name'];
-} elseif (isset($availabilityDomains['name'])) {
+if (isset($availabilityDomains['name'])) {
     $availabilityDomain = $availabilityDomains['name'];
 } else {
     $availabilityDomain = is_array($availabilityDomains) ? current($availabilityDomains)['name'] : '';
