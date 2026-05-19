@@ -33,17 +33,21 @@ $shape = 'VM.Standard.A1.Flex';
 $ocpus = 4;
 $memoryInGBs = 24;
 
-// Auto-detect availability domain for Singapore
-$availabilityDomains = $api->getAvailabilityDomains();
+// Pass the tenancyId argument to the domain lookup function
+$availabilityDomains = $api->getAvailabilityDomains($tenancyId);
 if (empty($availabilityDomains)) {
     echo "Error: Could not retrieve availability domains. Double-check your Oracle keys.\n";
     exit(1);
 }
 
-// Select the first available domain block in Singapore
-$availabilityDomain = is_array($availabilityDomains) && isset($availabilityDomains[0]['name']) 
-    ? $availabilityDomains[0]['name'] 
-    : $availabilityDomains['name'];
+// Select the first available domain block in Singapore safely
+if (isset($availabilityDomains[0]['name'])) {
+    $availabilityDomain = $availabilityDomains[0]['name'];
+} elseif (isset($availabilityDomains['name'])) {
+    $availabilityDomain = $availabilityDomains['name'];
+} else {
+    $availabilityDomain = is_array($availabilityDomains) ? current($availabilityDomains)['name'] : '';
+}
 
 echo "Targeting Location Domain: " . $availabilityDomain . "\n";
 
