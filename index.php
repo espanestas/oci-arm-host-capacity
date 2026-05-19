@@ -5,7 +5,7 @@ require_once __DIR__ . '/vendor/autoload.php';
 use Hitrov\OciApi;
 use Hitrov\OciConfig;
 
-// Automatically scrub inputs and hardcode your confirmed Singapore region identifier
+// Get credentials from GitHub Environment and forcefully scrub away hidden line breaks
 $userId = trim(getenv('OCI_USER_ID'));
 $tenancyId = trim(getenv('OCI_TENANCY_ID'));
 $region = 'ap-singapore-1'; 
@@ -32,18 +32,10 @@ $shape = 'VM.Standard.A1.Flex';
 $ocpus = 4;
 $memoryInGBs = 24;
 
-// Request domain configurations directly from Singapore endpoints
-$availabilityDomains = $api->getAvailabilityDomains($config);
-if (empty($availabilityDomains)) {
-    echo "Error: Could not retrieve availability domains. Check user credentials.\n";
-    exit(1);
-}
-
-if (isset($availabilityDomains['name'])) {
-    $availabilityDomain = $availabilityDomains['name'];
-} else {
-    $availabilityDomain = is_array($availabilityDomains) ? current($availabilityDomains)['name'] : '';
-}
+// BYPASS THE HITROV VALIDATION BUG:
+// We skip fetching the domain dynamically because Hitrov's tool crashes on it.
+// Instead, we force the exact technical code for Singapore's main availability domain directly!
+$availabilityDomain = 'uNAn:AP-SINGAPORE-1-AD-1'; 
 
 echo "Targeting Location Domain: " . $availabilityDomain . "\n";
 
