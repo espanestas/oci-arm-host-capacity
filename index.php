@@ -5,8 +5,7 @@ require_once __DIR__ . '/vendor/autoload.php';
 use Hitrov\OciApi;
 use Hitrov\OciConfig;
 
-// FORCEFULLY DEACTIVATE THE BROKEN HITROV VALIDATOR SYSTEM VIA THE RUNTIME CONTEXT
-// This patches the URL validation crash so the script can communicate directly with Oracle
+// FORCEFULLY DEACTIVATE THE BROKEN SYSTEM VALIDATOR VIA THE RUNTIME CONTEXT
 class SignerUrlBypass extends \Hitrov\OCI\Signer {
     protected function validateParameters(): void {
         // By leaving this completely empty, we forcefully skip the broken filter_var check entirely!
@@ -36,7 +35,8 @@ $config = new OciConfig(
 
 // We attach our customized bypass layout straight into the core API client engine
 $api = new class($config) extends OciApi {
-    protected function call(string $method, string $url, string $body = '', array $headers = []): array {
+    // Corrected to public visibility to match parent class signature definitions
+    public function call(string $method, string $url, string $body = '', array $headers = []): array {
         $signer = new SignerUrlBypass(
             $this->config->getUserId(),
             $this->config->getTenancyId(),
