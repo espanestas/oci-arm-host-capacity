@@ -1,32 +1,42 @@
-name: Run Oracle Grabber
+```yaml
+name: Oracle A1 Capacity Grabber
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: '*/5 * * * *'
+    # GitHub attempts this every 5 minutes.
+    # Scheduled workflows can sometimes be delayed by GitHub.
+    - cron: "*/5 * * * *"
+
+permissions:
+  contents: read
 
 jobs:
-  run-script:
+  grab:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout Code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.2'
-          extensions: curl, mbstring, openssl
+      - name: Install OCI CLI
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install oci-cli
+          oci --version
 
-      - name: Install Dependencies
-        run: composer install
-
-      - name: Run Grabber
+      - name: Try to grab A1 capacity
         env:
           OCI_USER_ID: ${{ secrets.OCI_USER_ID }}
           OCI_TENANCY_ID: ${{ secrets.OCI_TENANCY_ID }}
           OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
-          OCI_REGION: ${{ secrets.OCI_REGION }}
-          OCI_SUBNET_ID: ${{ secrets.OCI_SUBNET_ID }}
           OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
-        run: php index.php
+          OCI_SUBNET_ID: ${{ secrets.OCI_SUBNET_ID }}
+
+          OCI_REGION: ap-singapore-1
+          OCI_AD: "uNAn:AP-SINGAPORE-1-AD-1"
+
+        run: |
+          chmod +x launch.sh
+          ./launch.sh
+```
