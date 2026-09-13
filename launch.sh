@@ -22,9 +22,9 @@ PUBLIC_KEY_FILE="${OCI_DIR}/minecraft_authorized_key.pub"
 
 mkdir -p "$OCI_DIR"
 
-echo "[1/6] Checking secrets..."
+echo "[1/7] Checking required secrets..."
 
-for VAR in OCI_USER_ID OCI_TENANCY_ID OCI_FINGERPRINT OCI_PRIVATE_KEY OCI_SUBNET_ID
+for VAR in OCI_USER_ID OCI_TENANCY_ID OCI_FINGERPRINT OCI_PRIVATE_KEY OCI_SUBNET_ID OCI_SSH_PUBLIC_KEY
 do
     if [ -z "${!VAR:-}" ]; then
         echo "ERROR: Missing GitHub secret: $VAR"
@@ -35,7 +35,7 @@ done
 echo "All required secrets are present."
 echo
 
-echo "[2/6] Preparing OCI API key..."
+echo "[2/7] Preparing OCI API key..."
 
 printf '%s\n' "$OCI_PRIVATE_KEY" > "$KEY_FILE"
 chmod 600 "$KEY_FILE"
@@ -45,24 +45,23 @@ if ! openssl pkey -in "$KEY_FILE" -noout >/dev/null 2>&1; then
     exit 1
 fi
 
-echo "OCI API key is valid."
+echo "OCI API private key format looks valid."
 echo
 
-echo "[3/6] Preparing SSH key..."
+echo "[3/7] Preparing SSH public key..."
 
-if ! ssh-keygen -y -f "$KEY_FILE" > "$PUBLIC_KEY_FILE" 2>/dev/null; then
-    echo "ERROR: Could not convert OCI_PRIVATE_KEY into an SSH public key."
-    echo
-    echo "The OCI API key and SSH key may be different keys."
+printf '%s\n' "$OCI_SSH_PUBLIC_KEY" > "$PUBLIC_KEY_FILE"
+chmod 600 "$PUBLIC_KEY_FILE"
+
+if ! grep -qE '^ssh-(rsa|ed25519|ecdsa) ' "$PUBLIC_KEY_FILE"; then
+    echo "ERROR: OCI_SSH_PUBLIC_KEY does not look like a valid SSH public key."
     exit 1
 fi
-
-chmod 600 "$PUBLIC_KEY_FILE"
 
 echo "SSH public key prepared."
 echo
 
-echo "[4/6] Creating OCI CLI configuration..."
+echo "[4/7] Creating OCI CLI configuration..."
 
 cat > "$CONFIG_FILE" <<EOF
 [DEFAULT]
@@ -79,18 +78,27 @@ export OCI_CLI_CONFIG_FILE="$CONFIG_FILE"
 
 echo "Testing OCI authentication..."
 
-if ! oci iam region list \
-    --config-file "$CONFIG_FILE" \
-    >/dev/null 2>&1
-then
+AUTH_OUTPUT=$(
+    oci iam region list \
+        --config-file "$CONFIG_FILE" \
+        2>&1
+)
+
+AUTH_EXIT=$?
+
+if [ "$AUTH_EXIT" -ne 0 ]; then
+    echo
     echo "ERROR: OCI authentication failed."
+    echo
+    echo "$AUTH_OUTPUT"
+    echo
     exit 1
 fi
 
 echo "OCI authentication successful."
 echo
 
-echo "[5/6] Checking for an existing Minecraft instance..."
+echo "[5/7] Checking for existing Minecraft instance..."
 
 INSTANCE_COUNT=$(
     oci compute instance list \
@@ -104,7 +112,7 @@ INSTANCE_COUNT=$(
         2>/dev/null
 )
 
-if [ -z "$INSTANCE_COUNT" ]; then
+if [ -z "$INSTANCE_COUNT" ] || [ "$INSTANCE_COUNT" = "null" ]; then
     INSTANCE_COUNT=0
 fi
 
@@ -121,7 +129,7 @@ fi
 echo "No existing Minecraft instance found."
 echo
 
-echo "[6/6] Finding an Ubuntu ARM64 image..."
+echo "[6/7] Finding Ubuntu ARM64 image..."
 
 IMAGE_ID=$(
     oci compute image list \
@@ -139,7 +147,6 @@ IMAGE_ID=$(
 )
 
 if [ -z "$IMAGE_ID" ] || [ "$IMAGE_ID" = "null" ]; then
-
     echo "Ubuntu 22.04 image not found."
     echo "Trying Ubuntu 24.04..."
 
@@ -165,7 +172,7 @@ if [ -z "$IMAGE_ID" ] || [ "$IMAGE_ID" = "null" ]; then
     exit 1
 fi
 
-echo "Ubuntu image found."
+echo "Ubuntu ARM64 image found."
 echo
 
 echo "=============================================="
