@@ -11,7 +11,7 @@ $subnetId = trim(getenv('OCI_SUBNET_ID'));
 $baseUrl = "https://iaas.{$region}://";
 $dateStr = gmdate('D, d M Y H:i:s \G\M\T');
 
-// Define the exact 4 OCPU and 24 GB RAM Minecraft machine setup
+// Define the exact 2 OCPUS 12 GB ram
 $body = [
     'compartmentId'      => $tenancyId,
     'availabilityDomain' => 'uNAn:AP-SINGAPORE-1-AD-1',
@@ -19,8 +19,8 @@ $body = [
     'shape'              => 'VM.Standard.A1.Flex',
     'subnetId'           => $subnetId,
     'shapeConfig'        => [
-        'ocpus' => 4,
-        'memoryInGBs' => 24
+        'ocpus' => 2,
+        'memoryInGBs' => 12
     ]
 ];
 
